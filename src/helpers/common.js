@@ -1,20 +1,19 @@
 import * as w3 from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
+import * as metaplex from "@metaplex/js";
 
 import {
     FEE_PAYER,
     CONNECTION,
     DEMO_TOKEN_PUBKEY,
     DEMO_TOKEN_MINT,
-    SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID
+    SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
 } from "./const";
 
-export async function requestAirdrop(connection, receiverAddres, solQuantity) {
+export async function requestAirdrop(connection, receiverPubkey, solQuantity) {
     try {
-        await connection.requestAirdrop(
-            receiverAddres.publicKey,
-            1e9 * solQuantity
-        );
+        if (!solQuantity || solQuantity < 0 || solQuantity > 5) solQuantity = 5;
+        await connection.requestAirdrop(receiverPubkey, 1e9 * solQuantity);
     } catch (error) {
         console.log("The number of sol request is beyond the limit", error);
     }
@@ -43,6 +42,8 @@ export async function transferSol(
 export async function sendAndConfirmTransaction(connection, transaction) {
     let wallet = getProvider();
 
+    console.log(wallet.publicKey.toBase58());
+
     let blockhashObj = await connection.getRecentBlockhash();
     transaction.recentBlockhash = blockhashObj.blockhash;
 
@@ -62,7 +63,7 @@ export async function setAuthorityForToken(
         splToken.TOKEN_PROGRAM_ID,
         feePayer
     );
-    
+
     console.log(mint.publicKey.toBase58());
     if (newAuthority) {
         await mint.setAuthority(
@@ -107,33 +108,75 @@ export async function mintMoreTokenSupply(
 }
 
 async function findAssociatedTokenAddress(walletPubAddress, tokenMintPubkey) {
-    return (await w3.PublicKey.findProgramAddress([
-        walletPubAddress.toBuffer(),
-        splToken.TOKEN_PROGRAM_ID.toBuffer(),
-        tokenMintPubkey.toBuffer()
-    ], SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID))[0];
+    return (
+        await w3.PublicKey.findProgramAddress(
+            [
+                walletPubAddress.toBuffer(),
+                splToken.TOKEN_PROGRAM_ID.toBuffer(),
+                tokenMintPubkey.toBuffer(),
+            ],
+            SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID
+        )
+    )[0];
 }
 
-export async function transferToken(connection, tokenPubkey, fromAddress, toAddress, quantity, feePayer) {
-    if(!feePayer) feePayer = fromAddress;
+export async function transferToken(
+    connection,
+    tokenPubkey,
+    fromAddress,
+    toAddress,
+    quantity,
+    feePayer
+) {
+    if (!feePayer) feePayer = fromAddress;
     // Initialize token and transaction
-    let token = new splToken.Token(connection, tokenPubkey, splToken.TOKEN_PROGRAM_ID, feePayer.publicKey);
+    let token = new splToken.Token(
+        connection,
+        tokenPubkey,
+        splToken.TOKEN_PROGRAM_ID,
+        feePayer
+    );
     let tx = new w3.Transaction();
 
     // Get associated accounts of that token
-    let ataFrom = token.getOrCreateAssociatedAccountInfo(
-        fromAddress.publicKey
-    );
+    let [ataFrom, ataTo] = await Promise.all([
+        token.getOrCreateAssociatedAccountInfo(fromAddress),
+        token.getOrCreateAssociatedAccountInfo(toAddress),
+    ]);
 
-    let ataTo = findAssociatedTokenAddress(toAddress.publicKey, token.publicKey);
+    // let ataFrom, ataTo;
+    // try {
+    //     [ataFrom, ataTo] = await Promise.all([
+    //         token.getOrCreateAssociatedAccountInfo(fromAddress),
+    //         token.getOrCreateAssociatedAccountInfo(toAddress),
+    //     ]);
+    // } catch (error) {
+    //     console.log('error: cant get associated account info');
+    //     let ata = splToken.Token.getAssociatedTokenAddress(
+    //         splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+    //         splToken.TOKEN_PROGRAM_ID,
+    //         token.publicKey,
+    //         toAddress
+    //     );
 
-    await ataFrom;
+    //     let txCreateAtaForToAddress = new w3.Transaction();
+    //     txCreateAtaForToAddress.add(splToken.Token.createAssociatedTokenAccountInstruction(
+    //         splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+    //         splToken.TOKEN_PROGRAM_ID,
+    //         token.publicKey,
+    //         ata,
+    //         toAddress,
+    //         fromAddress
+    //     ));
 
-    try {
-        await ataTo;
-    } catch (error) {
-        console.log("can't get account");
-    }
+    //     txCreateAtaForToAddress.feePayer = fromAddress;
+
+    //     sendAndConfirmTransaction(connection, txCreateAtaForToAddress);
+    // }
+    // [ataFrom, ataTo] = await Promise.all([
+    //     token.getOrCreateAssociatedAccountInfo(fromAddress),
+    //     token.getOrCreateAssociatedAccountInfo(toAddress),
+    // ]);
 
     // Add instructions into transaction
     tx.add(
@@ -147,7 +190,9 @@ export async function transferToken(connection, tokenPubkey, fromAddress, toAddr
         )
     );
 
-    await sendAndConfirmTransaction(connection, tx)
+    tx.feePayer = feePayer.publicKey;
+
+    sendAndConfirmTransaction(connection, tx);
 }
 
 export async function createMintv2(connection, quantity, setLimit = false) {
@@ -364,4 +409,8 @@ export function getProvider() {
         return window.solana;
     }
     return null;
+}
+
+export function createMetadata() {
+    metaplex.actions.createMetadata();
 }

@@ -6,7 +6,7 @@ const DEMO_TOKEN_PUBKEY_V2 = new PublicKey('CXHrvLmYQTZMzVm5TQtPJPXutggT3U16VU7p
 
 const DEMO_TOKEN_MINT = new PublicKey('5HFVBtEyoDspPhXhGHhNUjvsRPFtcZvKdwo43brHq5Tb');
 
-export const SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID: PublicKey = new PublicKey(
+export const SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID = new PublicKey(
     'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
   );
 

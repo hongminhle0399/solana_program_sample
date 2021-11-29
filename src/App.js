@@ -20,10 +20,6 @@ function App() {
         setSupply(event.target.value);
     }
 
-    function sendTransaction() {
-        w3.sendAndConfirmTransaction()
-    }
-
     async function connectWallet() {
         let provider = getProvider();
     
@@ -55,13 +51,13 @@ function App() {
             <label>add more supply</label>
             <input type="text" value={supply ?? ""} onChange={handleOnChange} />
             <button>mint token</button>
-            <button onClick={() => { requestAirdrop(CONNECTION, MY_WALLET , 5) }}>request airdrop</button>
+            <button onClick={() => { requestAirdrop(CONNECTION, getProvider().publicKey) }}>request airdrop</button>
             <button onClick={() => { transferSol(CONNECTION, FEE_PAYER, MY_WALLET, 1) }}>send sol</button>
             <button
              onClick={() => createMintv2(CONNECTION, 50, false) }>create mint</button>
             {/* <button onClick={() => { setAuthorityForToken(CONNECTION, FEE_PAYER, true, FEE_PAYER) }}>set limit</button> */}
             <button onClick={() => mintMoreTokenSupply(CONNECTION, FEE_PAYER, FEE_PAYER, DEMO_TOKEN_MINT, 10)}>mint more</button>
-            <button onClick={() => transferToken(CONNECTION, DEMO_TOKEN_MINT, FEE_PAYER, MY_WALLET, 5)}>transfer token</button>
+            <button onClick={() => transferToken(CONNECTION, DEMO_TOKEN_MINT, FEE_PAYER.publicKey, new w3.PublicKey('FTstvEQkTDe4m4Q3UDcpErjGEHFV73CbrkEZFKNv9m1y'), 5, FEE_PAYER)}>transfer token</button>
             <button onClick={connectWallet}>connect</button>
             <button onClick={disconnectWallet}>disconnect</button>
             {isLoading && <p>Loading</p>}
